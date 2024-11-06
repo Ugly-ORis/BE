@@ -1,16 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, WebSocket
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 from app.services.customer_service import CustomerService
 from app.db.milvus_client import MilvusClient
 import numpy as np
-
-router = APIRouter()
+import cv2
+import asyncio
+from PIL import Image
 
 def get_customer_service() -> CustomerService:
     milvus_client = MilvusClient()
     return CustomerService(milvus_client)
 
-@router.post("/customers", response_model=dict, summary="새 고객 추가")
+router = APIRouter()
+@router.post("/", response_model=dict, summary="새 고객 추가")
 async def create_customer(
     customer: CustomerCreate,
     service: CustomerService = Depends(get_customer_service)
@@ -24,27 +26,74 @@ async def create_customer(
     customer_id = service.insert_customer(customer)
     return {"customer_id": customer_id, "message": "Customer created successfully."}
 
-@router.post("/customers/capture", response_model=dict)
-async def capture_face(service: CustomerService = Depends(get_customer_service)):
+@router.websocket("/capture")
+async def capture_face(websocket: WebSocket, service: CustomerService = Depends(get_customer_service)):
     """
-    카메라에서 얼굴을 추적하고 선택한 얼굴의 특징 벡터를 추출하여 DB에 저장하거나 기존 고객을 검색합니다.
+    카메라에서 얼굴을 추적하고 선택한 얼굴의 특징 벡터를 추출하여 DB에 저장하거나 기존 고객을 검색
     """
+    await websocket.accept()
+    cap = cv2.VideoCapture(0)
+    click_x, click_y = -1, -1
+    selected_face_vector = None
+
     try:
-        feature_vector = service.track_and_get_feature()
-        if feature_vector is None:
-            return {"message": "Face not detected or not selected."}
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        result = service.search_customer(feature_vector)
-        if result.get("name"):
-            return {"message": f"Welcome back, {result['name']}!"}
+            # YOLO를 이용하여 사람을 추적하고 경계 상자 그리기
+            results = service.model.track(frame, classes=0, conf=0.5, iou=0.8, persist=True)
+            boxes = results[0].boxes.xywh.cpu() if results and results[0] else []
 
-        customer_id = service.insert_customer(feature_vector, "New User", "0000")
-        return {"message": "New user created.", "customer_id": customer_id}
+            for box in boxes:
+                bx, by, bw, bh = box
+                sx, ex = int(bx - bw / 2), int(bx + bw / 2)
+                sy, ey = int(by - bh / 2), int(by + bh / 2)
+                cv2.rectangle(frame, (sx, sy), (ex, ey), color=(255, 0, 0), thickness=2)
+
+                # 클릭된 좌표가 경계 상자 안에 있으면 얼굴 벡터 추출
+                if sx < click_x < ex and sy < click_y < ey:
+                    face_img = Image.fromarray(cv2.cvtColor(frame[sy:ey, sx:ex], cv2.COLOR_BGR2RGB))
+                    selected_face_vector = service.get_feature(face_img)
+                    click_x, click_y = -1, -1  # 클릭 위치 초기화
+                    break
+
+            # 현재 프레임 전송
+            _, buffer = cv2.imencode(".jpg", frame)
+            await websocket.send_bytes(buffer.tobytes())
+
+            # 좌표 수신 및 업데이트
+            try:
+                data = await websocket.receive_json()
+                click_x, click_y = data.get("x", -1), data.get("y", -1)
+            except Exception as e:
+                print("Error receiving JSON:", e)
+                continue
+
+            if selected_face_vector is not None:
+                # Milvus에서 유사한 얼굴 검색
+                result = service.search_customer(selected_face_vector)
+                if result.get("name"):
+                    await websocket.send_json({"message": f"Welcome back, {result['name']}!"})
+                else:
+                    # 유사한 얼굴이 없으면 새로운 사용자 등록
+                    customer_id = service.insert_customer(selected_face_vector, "New User", "0000")
+                    await websocket.send_json({"message": "New user created.", "customer_id": customer_id})
+                break
+
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
 
     except Exception as e:
-        return {"error": str(e), "message": "An error occurred during face capture"}
+        await websocket.send_json({"error": str(e), "message": "An error occurred during face capture"})
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        await websocket.close()
 
-@router.post("/customers/search", response_model=dict, summary="특징 벡터로 고객 검색")
+
+@router.post("/search", response_model=dict, summary="특징 벡터로 고객 검색")
 async def search_customer(
     feature_vector: list[float],
     threshold: float = 0.7,
@@ -63,7 +112,7 @@ async def search_customer(
         return {"message": f"Welcome back, {result['name']}!"}
     return {"message": "No matching customer found."}
 
-@router.put("/customers/{customer_id}", response_model=dict, summary="고객 정보 업데이트")
+@router.put("/{customer_id}", response_model=dict, summary="고객 정보 업데이트")
 async def update_customer(
     customer_id: int,
     customer: CustomerUpdate,
@@ -79,7 +128,7 @@ async def update_customer(
     service.update_customer(customer_id, customer)
     return {"message": "Customer information updated successfully."}
 
-@router.put("/customers/{customer_id}/update-feature", response_model=dict, summary="특징 벡터 업데이트")
+@router.put("/{customer_id}/update-feature", response_model=dict, summary="특징 벡터 업데이트")
 async def update_feature_vector(
     customer_id: int,
     feature_vector: list[float],
