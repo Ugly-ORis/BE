@@ -1,0 +1,12 @@
+fastapi==0.115.4
+uvicorn==0.32.0
+pymilvus==2.4.9
+facenet-pytorch==2.5.2
+Pillow==9.2.0
+numpy==1.23.3
+pydantic==2.9.2
+torch==2.5.1
+opencv-python==4.10.0.84
+pillow==11.0.0
+ultralytics==8.3.27
+facenet-pytorch==2.6.0

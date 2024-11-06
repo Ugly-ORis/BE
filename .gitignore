@@ -1,0 +1,50 @@
+# Python 기본
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.env
+*.venv
+venv/
+myenv/
+ENV/
+env/
+*.ipynb_checkpoints
+
+# 가상환경 및 환경 변수 파일
+.vscode/
+.venv/
+.env
+
+# 밀버스 관련
+*.log
+milvus_data/
+milvus/
+
+# 로컬 환경 파일
+.local
+.DS_Store
+
+# 테스트 및 결과 파일
+coverage/
+*.cover
+*.coverage
+.cache/
+*.egg-info/
+*.egg
+dist/
+build/
+*.db
+*.sqlite3
+
+# VSCode 및 IDE 설정
+.idea/
+.vscode/
+
+# 터미널 로그 및 기록
+nohup.out
+
+# 기타
+*.bak
+yolo11x.pt
