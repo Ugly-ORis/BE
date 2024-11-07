@@ -1,15 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class ToppingBase(BaseModel):
-    name: str
-    price: float
-    availability: bool
+    name: str = Field(..., max_length=20)
+    extra_price: float
 
 class ToppingCreate(ToppingBase):
     pass
 
-class ToppingUpdate(ToppingBase):
+class ToppingUpdate(BaseModel):
     name: Optional[str] = None
-    price: Optional[float] = None
-    availability: Optional[bool] = None
+    extra_price: Optional[float] = None
+
+class ToppingResponse(ToppingBase):
+    id: int
