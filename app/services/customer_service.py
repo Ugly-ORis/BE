@@ -12,12 +12,11 @@ class CustomerService:
     고객 정보 서비스 클래스
     """
 
-    def __init__(self, milvus_client: MilvusClient):
-        self.milvus_client = milvus_client
+    def __init__(self, customer_client: MilvusClient):
+        self.milvus_client = customer_client
         self.mtcnn = MTCNN()
-        self.resnet = InceptionResnetV1(pretrained='vggface2').eval().to("cuda" if torch.cuda.is_available() else "cpu")
+        self.resnet = InceptionResnetV1(pretrained='vggface2').eval()
         self.model = YOLO("yolo11x.pt")  
-        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
 
     def get_feature(self, img: Image.Image) -> np.ndarray:
         """
@@ -26,7 +25,7 @@ class CustomerService:
         img_cropped = self.mtcnn(img)
         if img_cropped is None:
             raise ValueError("얼굴을 감지할 수 없습니다.")
-        feature_vector = self.resnet(img_cropped.unsqueeze(0).to("cuda" if torch.cuda.is_available() else "cpu"))
+        feature_vector = self.resnet(img_cropped.unsqueeze(0))
         return feature_vector.detach().cpu().numpy().astype(np.float32)
 
     def get_similarity(self, origin_feature: np.ndarray, new_feature: np.ndarray) -> str:
@@ -99,10 +98,10 @@ class CustomerService:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
-        self.milvus_client.collection.load()
+        self.customer_client.collection.load()
 
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
-        results = self.milvus_client.collection.search(
+        results = self.customer_client.collection.search(
             data=[feature_vector.flatten().astype(np.float32).tolist()],
             anns_field="feature_vector",
             param=search_params,
@@ -128,8 +127,8 @@ class CustomerService:
         ]
         
         try:
-            insert_result = self.milvus_client.collection.insert(entities)
-            self.milvus_client.collection.flush()
+            insert_result = self.customer_client.collection.insert(entities)
+            self.customer_client.collection.flush()
             return insert_result.primary_keys[0]
         except Exception as e:
             print(f"Insertion error: {e}")

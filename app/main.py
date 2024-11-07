@@ -13,9 +13,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# 신뢰할 수 있는 호스트 설정
 app.add_middleware(
-    TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"]
+    TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "*"]
 )
 
 # 엔드포인트 라우터 등록
