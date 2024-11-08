@@ -5,6 +5,7 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 import numpy as np
 from app.db.milvus_client import MilvusClient
 from ultralytics import YOLO
+from datetime import datetime
 import cv2
 
 class CustomerService:
@@ -98,10 +99,10 @@ class CustomerService:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
-        self.customer_client.collection.load()
+        self.milvus_client.collection.load()
 
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
-        results = self.customer_client.collection.search(
+        results = self.milvus_client.collection.search(
             data=[feature_vector.flatten().astype(np.float32).tolist()],
             anns_field="feature_vector",
             param=search_params,
@@ -123,12 +124,13 @@ class CustomerService:
         entities = [
             feature_vector,
             [name],
-            [phone_last_digits]
+            [phone_last_digits],
+            [datetime.now()]
         ]
         
         try:
-            insert_result = self.customer_client.collection.insert(entities)
-            self.customer_client.collection.flush()
+            insert_result = self.milvus_client.collection.insert(entities)
+            self.milvus_client.collection.flush()
             return insert_result.primary_keys[0]
         except Exception as e:
             print(f"Insertion error: {e}")
