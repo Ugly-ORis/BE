@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, Depends, WebSocket
-from app.schemas.customer import CustomerCreate, CustomerUpdate
+from app.schemas.customer_schema import CustomerCreate, CustomerUpdate
 from app.services.customer_service import CustomerService
 from app.api.dependencies import customer_client
 import numpy as np

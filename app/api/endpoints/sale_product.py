@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.sale_product import SaleProductCreate, SaleProductUpdate, SaleProductResponse
+from app.schemas.sale_product_schema import SaleProductCreate, SaleProductUpdate, SaleProductResponse
 from app.services.sale_product_service import SaleProductService
 from app.api.dependencies import sale_product_client
 from typing import List

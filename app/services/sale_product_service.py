@@ -1,5 +1,5 @@
 from app.db.milvus_client import MilvusClient
-from app.schemas.sale_product import SaleProductCreate, SaleProductUpdate
+from app.schemas.sale_product_schema import SaleProductCreate, SaleProductUpdate
 from typing import Optional
 
 class SaleProductService:

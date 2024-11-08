@@ -1,11 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from app.api.endpoints.customer import customer
-from app.api.endpoints.order import order
-from app.api.endpoints.ice_cream import ice_cream
-from app.api.endpoints.topping import topping
-from app.api.endpoints.sale_product import sale_product
+from app.api.endpoints import customer, order, ice_cream, topping, sale_product
 
 app = FastAPI()
 
@@ -22,8 +18,8 @@ app.add_middleware(
 )
 
 # 엔드포인트 라우터 등록
-app.include_router(customer.router, prefix="/customers", tags=["customers"])
-app.include_router(ice_cream.router, prefix="/ice_cream", tags=["ice_cream"])
-app.include_router(topping.router, prefix="/topping", tags=["topping"])
-app.include_router(order.router, prefix="/order", tags=["order"])
-app.include_router(sale_product.router, prefix="/sale_product", tags=["sale_product"])
+app.include_router(customer, prefix="/customers", tags=["customers"])
+app.include_router(ice_cream, prefix="/ice_cream", tags=["ice_cream"])
+app.include_router(topping, prefix="/topping", tags=["topping"])
+app.include_router(order, prefix="/order", tags=["order"])
+app.include_router(sale_product, prefix="/sale_product", tags=["sale_product"])

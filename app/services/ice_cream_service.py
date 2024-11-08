@@ -1,5 +1,5 @@
 from app.db.milvus_client import MilvusClient
-from app.schemas.ice_cream import IceCreamCreate, IceCreamUpdate
+from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamUpdate
 from typing import Optional
 
 class IceCreamService:

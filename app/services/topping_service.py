@@ -1,5 +1,5 @@
 from app.db.milvus_client import MilvusClient
-from app.schemas.topping import ToppingCreate, ToppingUpdate
+from app.schemas.topping_schema import ToppingCreate, ToppingUpdate
 from typing import Optional
 
 class ToppingService:

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.order import OrderCreate, OrderUpdate, OrderResponse
+from app.schemas.order_schema import OrderCreate, OrderUpdate, OrderResponse
 from app.services.order_service import OrderService
 from app.api.dependencies import order_client
 from typing import List

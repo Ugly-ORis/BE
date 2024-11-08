@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.topping import ToppingCreate, ToppingUpdate, ToppingResponse
+from app.schemas.topping_schema import ToppingCreate, ToppingUpdate, ToppingResponse
 from app.services.topping_service import ToppingService
 from app.api.dependencies import topping_client
 from typing import List

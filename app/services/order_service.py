@@ -1,5 +1,5 @@
 from app.db.milvus_client import MilvusClient
-from app.schemas.order import OrderCreate, OrderUpdate
+from app.schemas.order_schema import OrderCreate, OrderUpdate
 from typing import Optional
 
 class OrderService:

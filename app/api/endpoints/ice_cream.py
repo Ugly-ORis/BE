@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.ice_cream import IceCreamCreate, IceCreamUpdate, IceCreamResponse
+from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamUpdate, IceCreamResponse
 from app.services.ice_cream_service import IceCreamService
 from app.api.dependencies import ice_cream_client
 from typing import List
