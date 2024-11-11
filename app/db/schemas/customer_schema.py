@@ -7,6 +7,6 @@ def get_customer_schema():
         FieldSchema(name="feature_vector", dtype=DataType.FLOAT_VECTOR, dim=512, description="얼굴 특징 벡터"),
         FieldSchema(name="name", dtype=DataType.VARCHAR, max_length=50, description="이름"),
         FieldSchema(name="phone_last_digits", dtype=DataType.VARCHAR, max_length=4, description="전화번호 뒤 4자리"),
-        FieldSchema(name="created_at", dtype=DataType.VARCHAR, max_length=25, description="생성 시간 (ISO 형식)"),  # ISO 8601 형식으로 저장
+        FieldSchema(name="created_at", dtype=DataType.VARCHAR, max_length=50, description="생성 시간 (ISO 형식)"),  # ISO 8601 형식으로 저장
     ]
     return CollectionSchema(fields, description="주문자 정보 컬렉션")

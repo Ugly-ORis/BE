@@ -6,6 +6,15 @@ class IceCreamService:
     def __init__(self, client: MilvusClient):
         self.client = client
 
+    def get_ice_creams(self, offset: int, limit: int):
+        results = self.client.collection.query(
+            expr="", 
+            output_fields=["ice_cream_id", "name", "flavor", "price"], 
+            limit=offset + limit 
+        )
+        
+        return results[offset:offset + limit]
+
     def create_ice_cream(self, ice_cream_data: IceCreamCreate) -> int:
         entities = [
             [ice_cream_data.name],

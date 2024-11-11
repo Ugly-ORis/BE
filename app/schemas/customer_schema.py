@@ -12,3 +12,6 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(CustomerBase):
     pass
+
+class CustomerResponse(CustomerBase):
+    customer_id: int

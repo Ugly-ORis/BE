@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamUpdate, IceCreamResponse
+from fastapi import APIRouter, Query, HTTPException, Depends
+from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamResponse
 from app.services.ice_cream_service import IceCreamService
 from app.api.dependencies import ice_cream_client
 from typing import List
@@ -8,6 +8,23 @@ def get_ice_cream_service() -> IceCreamService:
     return IceCreamService(ice_cream_client)
 
 router = APIRouter()
+
+@router.get("/", response_model=List[IceCreamResponse])
+async def get_ice_creams(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    service: IceCreamService = Depends(get_ice_cream_service)
+):
+    """
+    페이징된 판매 상품 목록을 가져오는 API.
+    """
+    offset = (page - 1) * page_size
+    ice_creams = service.get_ice_creams(offset=offset, limit=page_size)
+    
+    if not ice_creams:
+        raise HTTPException(status_code=404, detail="No Ice-Cream found.")
+    
+    return ice_creams
 
 @router.post("/", response_model=IceCreamResponse)
 async def create_ice_cream(ice_cream: IceCreamCreate, service: IceCreamService = Depends(get_ice_cream_service)):

@@ -1,16 +1,34 @@
-from fastapi import FastAPI, APIRouter, Depends, WebSocket
-from app.schemas.customer_schema import CustomerCreate, CustomerUpdate
+from fastapi import FastAPI, Query, APIRouter, Depends, WebSocket, HTTPException
+from app.schemas.customer_schema import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.services.customer_service import CustomerService
 from app.api.dependencies import customer_client
 import numpy as np
 import cv2
-import asyncio
 from PIL import Image
+from typing import List
 
 def get_customer_service() -> CustomerService:
     return CustomerService(customer_client)
 
 router = APIRouter()
+
+@router.get("/", response_model=List[CustomerResponse])
+async def get_customers(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    service: CustomerService = Depends(get_customer_service)
+):
+    """
+    페이징된 판매 상품 목록을 가져오는 API.
+    """
+    offset = (page - 1) * page_size
+    customers = service.get_customers(offset=offset, limit=page_size)
+    
+    if not customers:
+        raise HTTPException(status_code=404, detail="No Customers found.")
+    
+    return customers
+
 @router.post("/", response_model=dict, summary="새 고객 추가")
 async def create_customer(
     customer: CustomerCreate,

@@ -1,10 +1,22 @@
 from app.db.milvus_client import MilvusClient
 from app.schemas.order_schema import OrderCreate, OrderUpdate
 from typing import Optional
+from app.utils.id_manager import IDManager
 
 class OrderService:
     def __init__(self, client: MilvusClient):
         self.client = client
+        self.id_manager = IDManager()
+        self.id_manager.initialize_default_ids(["Order"])
+
+    def get_orders(self, offset: int, limit: int):
+        results = self.client.collection.query(
+            expr="", 
+            output_fields=["order_id", "order_datetime", "customer_id", "sale_product_id_json", "total_price"], 
+            limit=offset + limit 
+        )
+        
+        return results[offset:offset + limit]
 
     def create_order(self, order_data: OrderCreate) -> int:
         entities = [

@@ -15,4 +15,4 @@ class SaleProductUpdate(BaseModel):
     product_price: Optional[float] = None
 
 class SaleProductResponse(SaleProductBase):
-    id: int
+    sale_product_id: int

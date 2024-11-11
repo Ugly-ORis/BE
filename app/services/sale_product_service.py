@@ -1,10 +1,22 @@
 from app.db.milvus_client import MilvusClient
 from app.schemas.sale_product_schema import SaleProductCreate, SaleProductUpdate
 from typing import Optional
+from app.utils.id_manager import IDManager
 
 class SaleProductService:
     def __init__(self, client: MilvusClient):
         self.client = client
+        self.id_manager = IDManager()
+        self.id_manager.initialize_default_ids(["Sale_Product"])
+
+    def get_sale_products(self, offset: int, limit: int):
+        results = self.client.collection.query(
+            expr="", 
+            output_fields=["sale_product_id", "topping_id_json", "ice_cream_id", "product_price"], 
+            limit=offset + limit 
+        )
+        
+        return results[offset:offset + limit]
 
     def create_product(self, product_data: SaleProductCreate) -> int:
         entities = [

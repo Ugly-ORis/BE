@@ -1,4 +1,5 @@
 from PIL import Image
+from app.utils.id_manager import IDManager
 import torch
 import torch.nn.functional as F
 from facenet_pytorch import MTCNN, InceptionResnetV1
@@ -14,10 +15,21 @@ class CustomerService:
     """
 
     def __init__(self, customer_client: MilvusClient):
-        self.milvus_client = customer_client
+        self.client = customer_client
         self.mtcnn = MTCNN()
         self.resnet = InceptionResnetV1(pretrained='vggface2').eval()
         self.model = YOLO("yolo11x.pt")  
+        self.id_manager = IDManager()
+        self.id_manager.initialize_default_ids(["Customer"])
+
+    def get_customers(self, offset: int, limit: int):
+        results = self.client.collection.query(
+            expr="", 
+            output_fields=["customer_id", "name", "phone_last_digits", "created_at"], 
+            limit=offset + limit 
+        )
+        
+        return results[offset:offset + limit]
 
     def get_feature(self, img: Image.Image) -> np.ndarray:
         """
@@ -100,7 +112,7 @@ class CustomerService:
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
-        results = self.milvus_client.collection.search(
+        results = self.client.collection.search(
             data=[feature_vector.flatten().astype(np.float32).tolist()],
             anns_field="feature_vector",
             param=search_params,
@@ -119,16 +131,18 @@ class CustomerService:
         """
         DB에 새 고객 정보 저장
         """
+        customer_id = self.id_manager.get_next_id("Customer")
         entities = [
+            [customer_id],
             feature_vector,
             [name],
             [phone_last_digits],
-            [datetime.now()]
+            [datetime.now().__str__()]
         ]
         
         try:
-            insert_result = self.milvus_client.collection.insert(entities)
-            self.milvus_client.collection.flush()
+            insert_result = self.client.collection.insert(entities)
+            self.client.collection.flush()
             return insert_result.primary_keys[0]
         except Exception as e:
             print(f"Insertion error: {e}")
