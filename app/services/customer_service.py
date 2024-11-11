@@ -99,8 +99,6 @@ class CustomerService:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
-        self.milvus_client.collection.load()
-
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
         results = self.milvus_client.collection.search(
             data=[feature_vector.flatten().astype(np.float32).tolist()],

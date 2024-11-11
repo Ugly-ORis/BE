@@ -9,6 +9,23 @@ def get_sale_product_service() -> SaleProductService:
 
 router = APIRouter()
 
+# @router.get("/", response_model=List[ToppingResponse])
+# async def get_toppings(
+#     page: int = Query(1, ge=1),
+#     page_size: int = Query(10, ge=1, le=100),
+#     service: ToppingService = Depends(get_topping_service)
+# ):
+#     """
+#     페이징된 토핑 목록을 가져오는 API.
+#     """
+#     offset = (page - 1) * page_size
+#     toppings = service.get_toppings(offset=offset, limit=page_size)
+    
+#     if not toppings:
+#         raise HTTPException(status_code=404, detail="No toppings found.")
+    
+#     return toppings
+
 @router.post("/", response_model=SaleProductResponse)
 async def create_sale_product(product: SaleProductCreate, service: SaleProductService = Depends(get_sale_product_service)):
     product_id = service.create_product(product)
@@ -20,13 +37,6 @@ async def get_sale_product(product_id: int, service: SaleProductService = Depend
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
-
-@router.put("/{product_id}", response_model=SaleProductResponse)
-async def update_sale_product(product_id: int, product: SaleProductUpdate, service: SaleProductService = Depends(get_sale_product_service)):
-    updated = service.update_product(product_id, product)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Product not found or update failed")
-    return {**product.dict(exclude_unset=True), "id": product_id}
 
 @router.delete("/{product_id}", response_model=dict)
 async def delete_sale_product(product_id: int, service: SaleProductService = Depends(get_sale_product_service)):

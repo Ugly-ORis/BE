@@ -8,9 +8,5 @@ class ToppingBase(BaseModel):
 class ToppingCreate(ToppingBase):
     pass
 
-class ToppingUpdate(BaseModel):
-    name: Optional[str] = None
-    extra_price: Optional[float] = None
-
 class ToppingResponse(ToppingBase):
-    id: int
+    topping_id: int

@@ -21,13 +21,6 @@ async def get_ice_cream(ice_cream_id: int, service: IceCreamService = Depends(ge
         raise HTTPException(status_code=404, detail="Ice cream not found")
     return ice_cream
 
-@router.put("/{ice_cream_id}", response_model=IceCreamResponse)
-async def update_ice_cream(ice_cream_id: int, ice_cream: IceCreamUpdate, service: IceCreamService = Depends(get_ice_cream_service)):
-    updated = service.update_ice_cream(ice_cream_id, ice_cream)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Ice cream not found or update failed")
-    return {**ice_cream.dict(exclude_unset=True), "id": ice_cream_id}
-
 @router.delete("/{ice_cream_id}", response_model=dict)
 async def delete_ice_cream(ice_cream_id: int, service: IceCreamService = Depends(get_ice_cream_service)):
     deleted = service.delete_ice_cream(ice_cream_id)

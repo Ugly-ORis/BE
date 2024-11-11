@@ -21,13 +21,6 @@ async def get_order(order_id: int, service: OrderService = Depends(get_order_ser
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
-@router.put("/{order_id}", response_model=OrderResponse)
-async def update_order(order_id: int, order: OrderUpdate, service: OrderService = Depends(get_order_service)):
-    updated = service.update_order(order_id, order)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Order not found or update failed")
-    return {**order.dict(exclude_unset=True), "order_id": order_id}
-
 @router.delete("/{order_id}", response_model=dict)
 async def delete_order(order_id: int, service: OrderService = Depends(get_order_service)):
     deleted = service.delete_order(order_id)
