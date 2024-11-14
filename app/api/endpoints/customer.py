@@ -1,14 +1,14 @@
 from fastapi import FastAPI, APIRouter, Depends, WebSocket
 from app.schemas.customer_schema import CustomerCreate, CustomerUpdate
 from app.services.customer_service import CustomerService
-from app.api.dependencies import customer_client
+from app.api.dependencies import topcam_client
 import numpy as np
 import cv2
 import asyncio
 from PIL import Image
 
 def get_customer_service() -> CustomerService:
-    return CustomerService(customer_client)
+    return CustomerService(topcam_client)
 
 router = APIRouter()
 @router.post("/", response_model=dict, summary="새 고객 추가")
