@@ -8,7 +8,7 @@ class CustomerBase(BaseModel):
     created_at: datetime
 
 class CustomerCreate(CustomerBase):
-    feature_vector: list[float]
+    image_vector: list[float]
 
 class CustomerUpdate(CustomerBase):
     pass

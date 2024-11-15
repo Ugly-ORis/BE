@@ -38,8 +38,8 @@ class CustomerService:
         img_cropped = self.mtcnn(img)
         if img_cropped is None:
             raise ValueError("얼굴을 감지할 수 없습니다.")
-        feature_vector = self.resnet(img_cropped.unsqueeze(0))
-        return feature_vector.detach().cpu().numpy().astype(np.float32)
+        image_vector = self.resnet(img_cropped.unsqueeze(0))
+        return image_vector.detach().cpu().numpy().astype(np.float32)
 
     def get_similarity(self, origin_feature: np.ndarray, new_feature: np.ndarray) -> str:
         """
@@ -107,34 +107,34 @@ class CustomerService:
         cv2.destroyAllWindows()
         return selected_face_vector
 
-    def search_customer(self, feature_vector, threshold: float = 0.7) -> dict:
+    def search_customer(self, image_vector, threshold: float = 0.7) -> dict:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
         results = self.client.collection.search(
-            data=[feature_vector.flatten().astype(np.float32).tolist()],
-            anns_field="feature_vector",
+            data=[image_vector.flatten().astype(np.float32).tolist()],
+            anns_field="image_vector",
             param=search_params,
             limit=1,
-            output_fields=["feature_vector", "name"]
+            output_fields=["image_vector", "name"]
         )
         if results and results[0]:
             matched_customer = results[0][0]
-            match_vector = np.array(matched_customer.entity.get("feature_vector"), dtype=np.float32)
-            similarity_message = self.get_similarity(feature_vector, match_vector)
+            match_vector = np.array(matched_customer.entity.get("image_vector"), dtype=np.float32)
+            similarity_message = self.get_similarity(image_vector, match_vector)
             return {"name": matched_customer.entity.get("name"), "message": similarity_message}
 
         return {"message": "No matching customer found."}
 
-    def insert_customer(self, feature_vector, name: str, phone_last_digits: str):
+    def insert_customer(self, image_vector, name: str, phone_last_digits: str):
         """
         DB에 새 고객 정보 저장
         """
         customer_id = self.id_manager.get_next_id("Customer")
         entities = [
             [customer_id],
-            feature_vector,
+            image_vector,
             [name],
             [phone_last_digits],
             [datetime.now().__str__()]

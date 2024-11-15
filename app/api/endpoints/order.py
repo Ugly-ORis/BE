@@ -16,7 +16,7 @@ async def get_orders(
     service: OrderService = Depends(get_order_service)
 ):
     """
-    페이징된 판매 상품 목록을 가져오는 API.
+    페이징된 주문 목록을 가져오는 API.
     """
     offset = (page - 1) * page_size
     orders = service.get_orders(offset=offset, limit=page_size)

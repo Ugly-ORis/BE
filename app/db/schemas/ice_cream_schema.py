@@ -8,5 +8,6 @@ def get_ice_cream_schema():
         FieldSchema(name="name", dtype=DataType.VARCHAR, max_length=50, description="아이스크림 이름"),
         FieldSchema(name="flavor", dtype=DataType.VARCHAR, max_length=200, description="맛(설명)"),
         FieldSchema(name="price", dtype=DataType.FLOAT, description="기본 가격"),
+        FieldSchema(name="image", dtype=DataType.VARCHAR, max_length=65535, description="아이스크림 이미지")
     ]
     return CollectionSchema(fields, description="아이스크림 정보 컬렉션")

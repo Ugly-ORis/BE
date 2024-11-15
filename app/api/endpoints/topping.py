@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, Query, HTTPException, Depends, File, UploadFile
 from app.schemas.topping_schema import ToppingCreate, ToppingResponse
 from app.services.topping_service import ToppingService
 from app.api.dependencies import topping_client
@@ -27,7 +27,7 @@ async def get_toppings(
     return toppings
 
 @router.post("/", response_model=ToppingResponse)
-async def create_topping(topping: ToppingCreate, service: ToppingService = Depends(get_topping_service)):
+async def create_topping(topping: ToppingCreate, image: UploadFile = File(...), service: ToppingService = Depends(get_topping_service)):
     topping_id = service.create_topping(topping)
     return ToppingResponse(topping_id=topping_id, **topping.dict())
 
