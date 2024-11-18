@@ -179,14 +179,14 @@ class CustomerService:
         self.client.collection.compact()
         return delete_result is not None
     
-    # def update_customer(self, customer_id: int, name: str, phone_last_digits: str):
-    #     """
-    #     customer update 구현
-    #     new user의 face vector를 일시 저장 -> 이벤트 발생 (본인 확인) 
-    #     -> new user에 id + 1을 하고 임시 저장된 face vector와 이름, 전화번호를 추가해서 새로 저장
-    #     """
-    #     customer_info = self.get_customer(customer_id)
-    #     feature_vector = customer_info.get("feature_vector")  # -> list
-    #     feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
-    #     self.delete_customer(customer_id)
-    #     self.insert_customer(feature_vector, name, phone_last_digits)
+    def update_customer(self, customer_id: int, name: str, phone_last_digits: str):
+        """
+        customer update 구현
+        new user의 face vector를 일시 저장 -> 이벤트 발생 (본인 확인) 
+        -> new user에 id + 1을 하고 임시 저장된 face vector와 이름, 전화번호를 추가해서 새로 저장
+        """
+        customer_info = self.get_customer(customer_id)
+        feature_vector = customer_info.get("feature_vector")  # -> list
+        feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
+        self.delete_customer(customer_id)
+        self.insert_customer(feature_vector, name, phone_last_digits)
