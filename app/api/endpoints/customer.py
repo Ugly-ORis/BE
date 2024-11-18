@@ -134,10 +134,11 @@ async def update_customer(
     특정 고객의 정보를 업데이트
 
     - **customer_id**: 업데이트할 고객 ID
-    - **customer**: 새로운 고객 정보
+    - **customer**: 새로운 고객 정보 (이름과 전화번호 [수정필요])
     - **response**: 성공 메시지
     """
     service.update_customer(customer_id, customer)
+    # service.update_customer(customer_id, name, phone_num)
     return {"message": "Customer information updated successfully."}
 
 @router.put("/{customer_id}/update-feature", response_model=dict, summary="특징 벡터 업데이트")
@@ -156,3 +157,4 @@ async def update_feature_vector(
     vector = np.array(feature_vector, dtype=np.float32)
     service.update_feature_vector(customer_id, vector)
     return {"message": "Feature vector updated successfully."}
+

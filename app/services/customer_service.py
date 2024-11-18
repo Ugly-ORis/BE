@@ -1,13 +1,28 @@
 from PIL import Image
-from app.utils.id_manager import IDManager
+from facenet_pytorch import MTCNN, InceptionResnetV1
+from ultralytics import YOLO
+
+# =====
+
+import os, cv2
+import numpy as np
+from collections import deque
+from datetime import datetime
+
+import mediapipe as mp
+
 import torch
 import torch.nn.functional as F
-from facenet_pytorch import MTCNN, InceptionResnetV1
-import numpy as np
+from torchvision import transforms
+from facenet_pytorch import InceptionResnetV1
+
+from tensorflow.keras.models import load_model, Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+
+from app.utils.id_manager import IDManager
 from app.db.milvus_client import MilvusClient
-from ultralytics import YOLO
-from datetime import datetime
-import cv2
+from typing import Optional
 
 class CustomerService:
     """
@@ -147,3 +162,31 @@ class CustomerService:
         except Exception as e:
             print(f"Insertion error: {e}")
             raise
+
+    def get_customer(self, customer_id: int) -> Optional[dict]:
+        """
+        customer 데이터 가져오기
+        """
+        results = self.client.collection.query(f"customer_id == {customer_id}", output_fields=["id", "feature_vector", "customer_id", "name", "phone_last_digits", "created_at"])
+        return results[0] if results else None
+
+    def delete_customer(self, customer_id: int) -> bool:
+        """
+        customer 데이터 삭제
+        """
+        delete_result = self.client.collection.delete(f"customer_id == {customer_id}")
+        self.client.collection.flush()
+        self.client.collection.compact()
+        return delete_result is not None
+    
+    # def update_customer(self, customer_id: int, name: str, phone_last_digits: str):
+    #     """
+    #     customer update 구현
+    #     new user의 face vector를 일시 저장 -> 이벤트 발생 (본인 확인) 
+    #     -> new user에 id + 1을 하고 임시 저장된 face vector와 이름, 전화번호를 추가해서 새로 저장
+    #     """
+    #     customer_info = self.get_customer(customer_id)
+    #     feature_vector = customer_info.get("feature_vector")  # -> list
+    #     feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
+    #     self.delete_customer(customer_id)
+    #     self.insert_customer(feature_vector, name, phone_last_digits)
