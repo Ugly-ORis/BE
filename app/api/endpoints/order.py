@@ -17,8 +17,22 @@ def get_cart_service() -> CartService:
 
 router = APIRouter()
 
-def get_order_service() -> OrderService:
-    return OrderService(order_client)
+@router.get("/", response_model=List[OrderResponse])
+async def get_orders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    service: OrderService = Depends(get_order_service)
+):
+    """
+    페이징된 주문 목록을 가져오는 API.
+    """
+    offset = (page - 1) * page_size
+    orders = service.get_orders(offset=offset, limit=page_size)
+    
+    if not orders:
+        raise HTTPException(status_code=404, detail="No Orders found.")
+    
+    return orders
 
 @router.post("/", response_model=dict)
 async def create_order(order: OrderCreate, 

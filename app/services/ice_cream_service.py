@@ -1,41 +1,66 @@
+import base64
 from app.db.milvus_client import MilvusClient
-from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamUpdate
+from app.schemas.ice_cream_schema import IceCreamCreate
 from typing import Optional
 from fastapi import HTTPException
+from PIL import Image
+from io import BytesIO
+
+from app.utils.id_manager import IDManager
+from app.utils.vector_converter import VectorConverter
 
 class IceCreamService:
     def __init__(self, client: MilvusClient):
         self.client = client
+        self.id_manager = IDManager()
+        self.id_manager.initialize_default_ids(["Ice_Cream"])
+        self.converter = VectorConverter()
 
     def get_ice_creams(self, offset: int, limit: int):
         results = self.client.collection.query(
             expr="", 
-            output_fields=["ice_cream_id", "name", "flavor", "price"], 
-            limit=offset + limit 
+            output_fields=["ice_cream_id", "name", "flavor", "price", "image"], 
+            offset=offset, 
+            limit=limit
         )
-        
-        return results[offset:offset + limit]
-
-    def create_ice_cream(self, ice_cream_data: IceCreamCreate) -> int:
-        entities = [
-            [ice_cream_data.name],
-            [ice_cream_data.flavor],
-            [ice_cream_data.price],
-            [ice_cream_data.stock]
+        ice_creams = [
+            {
+                "ice_cream_id": result["ice_cream_id"],
+                "name": result["name"],
+                "flavor": result["flavor"],
+                "price": result["price"],
+                "image": result["image"]
+            }
+            for result in results
         ]
-        insert_result = self.client.collection.insert(entities)
-        self.client.collection.flush()
-        return insert_result.primary_keys[0]
+        return ice_creams
 
+    def create_ice_cream(self, ice_cream: IceCreamCreate, pil_image) -> int:
+        image = self.resize_and_convert_to_base64(pil_image)
+        ice_cream_id = self.id_manager.get_next_id("Ice_Cream")
+        entities = [
+            [ice_cream_id],
+            [[0.0, 0.0]],
+            [ice_cream.name],
+            [ice_cream.flavor],
+            [ice_cream.price],
+            [image]
+        ]
+        self.client.collection.insert(entities)
+        self.client.collection.flush()
+        self.id_manager.update_last_id("Ice_Cream", ice_cream_id)
+        return ice_cream_id
+    
     def get_ice_cream(self, ice_cream_id: int) -> Optional[dict]:
-        result = self.client.collection.query(f"id == {ice_cream_id}")
+        result = self.client.collection.query(
+            expr=f"ice_cream_id == {ice_cream_id}", 
+            output_fields=["ice_cream_id", "name", "flavor", "price"]
+        )
         return result[0] if result else None
 
-    def update_ice_cream(self, ice_cream_id: int, ice_cream_data: IceCreamUpdate) -> bool:
-        update_fields = {k: v for k, v in ice_cream_data.dict().items() if v is not None}
-        return self.client.collection.update(ice_cream_id, update_fields)
 
     def delete_ice_cream(self, ice_cream_id: int) -> bool:
+<<<<<<< HEAD
         return self.client.collection.delete(f"id == {ice_cream_id}")
     
     def get_ice_cream_name(self, ice_cream_id: int) -> Optional[str]:
@@ -50,3 +75,30 @@ class IceCreamService:
             return result[0]['name']
         
         raise HTTPException(status_code=404, detail="Ice cream name not found")
+=======
+        return self.client.collection.delete(f"ice_cream_id == {ice_cream_id}")
+
+    def resize_and_convert_to_base64(self, pil_image, max_size_bytes=65535) -> str:
+        buffer = BytesIO()
+        quality = 85 
+
+        pil_image.save(buffer, format="JPEG", quality=quality)
+
+        while True:
+            base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            if len(base64_image) <= max_size_bytes:
+                break  
+
+            quality -= 5
+            if quality < 10:  
+                width, height = pil_image.size
+                pil_image = pil_image.resize((width // 2, height // 2))
+                quality = 85 
+
+            buffer = BytesIO()
+            pil_image.save(buffer, format="JPEG", quality=quality)
+
+        return base64_image
+
+
+>>>>>>> eed737bfe6552db35e7c225df72a5ea7e04426d4

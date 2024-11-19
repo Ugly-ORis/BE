@@ -31,7 +31,7 @@ app.include_router(cart, prefix="/cart", tags=["cart"])
 async def startup_event():
     print("Starting up and initializing Milvus collections...")
 
-    MilvusClient("Customer", get_customer_schema(), vector_index_field="feature_vector", numeric_index_field="customer_id")
+    MilvusClient("Customer", get_customer_schema(), vector_index_field="image_vector", numeric_index_field="customer_id")
     MilvusClient("Order", get_order_schema(), numeric_index_field="order_id")
     MilvusClient("Ice_cream", get_ice_cream_schema(), numeric_index_field="ice_cream_id")
     MilvusClient("Topping", get_topping_schema(), numeric_index_field="topping_id")

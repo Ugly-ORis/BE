@@ -26,7 +26,7 @@ class MilvusClient:
 
     def create_vector_index(self, field_name: str):
         """벡터 필드에 대한 인덱스 생성"""
-        nlist_value = 128 if field_name == "feature_vector" else 1
+        nlist_value = 128 if field_name == "image_vector" else 1
         index_params = {
             "metric_type": "L2",
             "index_type": "IVF_FLAT",

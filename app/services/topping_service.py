@@ -27,7 +27,8 @@ class ToppingService:
             [topping_id],
             [[0.0, 0.0]],
             [topping_data.name],
-            [topping_data.extra_price]
+            [topping_data.extra_price],
+            
         ]
         self.client.collection.insert(entities)
         self.client.collection.flush()
