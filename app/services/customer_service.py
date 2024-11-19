@@ -194,22 +194,22 @@ class CustomerService:
         cap.release()
         return selected_face_vector
 
-    def search_customer(self, feature_vector, threshold: float = 0.7) -> dict:
+    def search_customer(self, image_vector, threshold: float = 0.7) -> dict:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
         search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
         results = self.client.collection.search(
-            data=[feature_vector.flatten().astype(np.float32).tolist()],
-            anns_field="feature_vector",
+            data=[image_vector.flatten().astype(np.float32).tolist()],
+            anns_field="image_vector",
             param=search_params,
             limit=1,
-            output_fields=["feature_vector", "name"]
+            output_fields=["image_vector", "name"]
         )
         if results and results[0]:
             matched_customer = results[0][0]
-            match_vector = np.array(matched_customer.entity.get("feature_vector"), dtype=np.float32)
-            similarity_message = self.get_similarity(feature_vector, match_vector)
+            match_vector = np.array(matched_customer.entity.get("image_vector"), dtype=np.float32)
+            similarity_message = self.get_similarity(image_vector, match_vector)
             return {"name": matched_customer.entity.get("name"), "message": similarity_message}
 
         return {"message": "No matching customer found."}
@@ -239,7 +239,7 @@ class CustomerService:
         """
         customer 데이터 가져오기
         """
-        results = self.client.collection.query(f"customer_id == {customer_id}", output_fields=["id", "feature_vector", "customer_id", "name", "phone_last_digits", "created_at"])
+        results = self.client.collection.query(f"customer_id == {customer_id}", output_fields=["id", "image_vector", "customer_id", "name", "phone_last_digits", "created_at"])
         return results[0] if results else None
 
     def delete_customer(self, customer_id: int) -> bool:
@@ -258,8 +258,8 @@ class CustomerService:
         -> new user에 id + 1을 하고 임시 저장된 face vector와 이름, 전화번호를 추가해서 새로 저장
         """
         customer_info = self.get_customer(customer_id)
-        feature_vector = customer_info.get("feature_vector")  # -> list
-        feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
+        image_vector = customer_info.get("image_vector") 
+        image_vector = np.array(image_vector, dtype=np.float32).reshape(1, 512)
         self.delete_customer(customer_id)
-        self.insert_customer(feature_vector, name, phone_last_digits)
+        self.insert_customer(image_vector, name, phone_last_digits)
     
