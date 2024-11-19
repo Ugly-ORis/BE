@@ -214,40 +214,19 @@ class CustomerService:
 
         return {"message": "No matching customer found."}
 
-    def get_customer(self, customer_id: int) -> Optional[dict]:
+    def insert_customer(self, image_vector, name: str, phone_last_digits: str):
         """
-        customer 데이터 가져오기
-        """
-        results = self.client.collection.query(f"customer_id == {customer_id}", output_fields=["id", "feature_vector", "customer_id", "name", "phone_last_digits", "created_at"])
-        return results[0] if results else None
-    
-    def delete_customer(self, customer_id: int) -> bool:
-        """
-        데이터 삭제
-        """
-        delete_result = self.client.collection.delete(f"customer_id == {customer_id}")
-        self.client.collection.flush()
-        self.client.collection.compact()
-        return delete_result is not None
-
-    def insert_customer(self, feature_vector, name: str, phone_last_digits: str):
-        """
-        DB에 새 고객 정보 저장 (= 업데이트 = 임의의 첫 데이터 삭제 후 저장)
-        상황: 일단 new user로써 id를 받고 저장 -> 이벤트 발생 -> new user에 id + 1을 하고 vector 추출해서 저장
-        1. new user의 feature를 tmp로 저장하고
-        2. 그 id 정보 삭제하고 (delete구현)
-        3. id+1에 사용자의 이름과 전화번호 뒷자리를 넣어서 고객 정보를 완성시켜서 collection에 다시 저장
-        그럼 id가 1,2,3,4,5 로 생성되는게 아니라 하나씩 건너서 2,4,6,8 식으로 저장될거임
+        DB에 새 고객 정보 저장
         """
         customer_id = self.id_manager.get_next_id("Customer")
         entities = [
             [customer_id],
-            feature_vector,
+            image_vector,
             [name],
             [phone_last_digits],
             [datetime.now().__str__()]
         ]
-
+        
         try:
             insert_result = self.client.collection.insert(entities)
             self.client.collection.flush()
@@ -256,13 +235,31 @@ class CustomerService:
             print(f"Insertion error: {e}")
             raise
 
+    def get_customer(self, customer_id: int) -> Optional[dict]:
+        """
+        customer 데이터 가져오기
+        """
+        results = self.client.collection.query(f"customer_id == {customer_id}", output_fields=["id", "feature_vector", "customer_id", "name", "phone_last_digits", "created_at"])
+        return results[0] if results else None
+
+    def delete_customer(self, customer_id: int) -> bool:
+        """
+        customer 데이터 삭제
+        """
+        delete_result = self.client.collection.delete(f"customer_id == {customer_id}")
+        self.client.collection.flush()
+        self.client.collection.compact()
+        return delete_result is not None
+    
     def update_customer(self, customer_id: int, name: str, phone_last_digits: str):
-            """
-            update 최종 구현
-            """
-            customer_info = self.get_customer(customer_id)
-            feature_vector = customer_info.get("feature_vector")  # -> list
-            feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
-            self.delete_customer(customer_id)
-            self.insert_customer(feature_vector, name, phone_last_digits)
+        """
+        customer update 구현
+        new user의 face vector를 일시 저장 -> 이벤트 발생 (본인 확인) 
+        -> new user에 id + 1을 하고 임시 저장된 face vector와 이름, 전화번호를 추가해서 새로 저장
+        """
+        customer_info = self.get_customer(customer_id)
+        feature_vector = customer_info.get("feature_vector")  # -> list
+        feature_vector = np.array(feature_vector, dtype=np.float32).reshape(1, 512)
+        self.delete_customer(customer_id)
+        self.insert_customer(feature_vector, name, phone_last_digits)
     
