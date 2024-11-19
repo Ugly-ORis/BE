@@ -60,7 +60,6 @@ class IceCreamService:
 
 
     def delete_ice_cream(self, ice_cream_id: int) -> bool:
-<<<<<<< HEAD
         return self.client.collection.delete(f"id == {ice_cream_id}")
     
     def get_ice_cream_name(self, ice_cream_id: int) -> Optional[str]:
@@ -75,7 +74,6 @@ class IceCreamService:
             return result[0]['name']
         
         raise HTTPException(status_code=404, detail="Ice cream name not found")
-=======
         return self.client.collection.delete(f"ice_cream_id == {ice_cream_id}")
 
     def resize_and_convert_to_base64(self, pil_image, max_size_bytes=65535) -> str:
@@ -99,6 +97,3 @@ class IceCreamService:
             pil_image.save(buffer, format="JPEG", quality=quality)
 
         return base64_image
-
-
->>>>>>> eed737bfe6552db35e7c225df72a5ea7e04426d4
