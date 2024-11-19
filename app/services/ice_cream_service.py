@@ -1,6 +1,7 @@
 from app.db.milvus_client import MilvusClient
 from app.schemas.ice_cream_schema import IceCreamCreate, IceCreamUpdate
 from typing import Optional
+from fastapi import HTTPException
 
 class IceCreamService:
     def __init__(self, client: MilvusClient):
@@ -36,3 +37,16 @@ class IceCreamService:
 
     def delete_ice_cream(self, ice_cream_id: int) -> bool:
         return self.client.collection.delete(f"id == {ice_cream_id}")
+    
+    def get_ice_cream_name(self, ice_cream_id: int) -> Optional[str]:
+        result = self.client.collection.query(f"ice_cream_id == {ice_cream_id}",output_fields=["name"])
+        
+        # 결과가 비어있는 경우 처리
+        if not result:
+            raise HTTPException(status_code=404, detail="Ice cream not found")
+        
+        # 'name' 키가 있는지 확인
+        if 'name' in result[0]:
+            return result[0]['name']
+        
+        raise HTTPException(status_code=404, detail="Ice cream name not found")

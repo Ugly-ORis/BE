@@ -4,7 +4,7 @@ from datetime import datetime
 
 class CustomerBase(BaseModel):
     name: str
-    phone_last_digits: constr(min_length=4, max_length=4)
+    phone_last_digits: constr(min_length=4, max_length=4) # type: ignore
     created_at: datetime
 
 class CustomerCreate(CustomerBase):
