@@ -10,9 +10,13 @@ import torch.nn.functional as F
 from torchvision import transforms
 from facenet_pytorch import InceptionResnetV1
 
-from tensorflow.keras.models import load_model, Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
+from tensorflow import keras
+from keras.layers import Dense
+from keras.models import Sequential, load_model
+
+from keras.models import load_model, Sequential
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from keras.optimizers import Adam
 
 from app.utils.id_manager import IDManager
 from app.db.milvus_client import MilvusClient

@@ -1,6 +1,8 @@
 from app.db.milvus_client import MilvusClient
 from app.schemas.topping_schema import ToppingCreate
 from typing import Optional
+from fastapi import HTTPException
+
 
 from app.utils.id_manager import IDManager
 
@@ -42,3 +44,15 @@ class ToppingService:
         self.client.collection.flush()
         self.client.collection.compact()
         return delete_result is not None
+
+    def get_topping_name(self, topping_id: int) -> Optional[str]:
+        result = self.client.collection.query(f"topping_id == {topping_id}",output_fields=["name"])
+        
+        # 결과가 비어있거나 'name' 키가 없는 경우를 처리
+        if not result:
+            raise HTTPException(status_code=404, detail="Topping not found")
+        
+        if 'name' in result[0]:
+            return result[0]['name']
+        
+        raise HTTPException(status_code=404, detail="Topping name not found")

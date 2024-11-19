@@ -157,4 +157,3 @@ async def update_feature_vector(
     vector = np.array(feature_vector, dtype=np.float32)
     service.update_feature_vector(customer_id, vector)
     return {"message": "Feature vector updated successfully."}
-
