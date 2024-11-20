@@ -10,7 +10,6 @@ import torch.nn.functional as F
 from torchvision import transforms
 from facenet_pytorch import InceptionResnetV1
 
-from tensorflow import keras
 from keras.layers import Dense
 from keras.models import Sequential, load_model
 
@@ -37,7 +36,11 @@ class CustomerService:
         self.emotion_model = load_model('emotion_model.h5') if 'emotion_model.h5' else self.create_emotion_model()
         # MediaPipe Face Mesh 설정
         self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5)
+        self.face_mesh = self.mp_face_mesh.FaceMesh(static_image_mode=False, 
+                                                    max_num_faces=1, 
+                                                    min_detection_confidence=0.8,
+                                                    min_tracking_confidence=0.95,
+                                                    )
         self.mp_drawing = mp.solutions.drawing_utils
 
         # 랜드마크 및 연결선 스타일 설정
@@ -132,13 +135,12 @@ class CustomerService:
         cap = cv2.VideoCapture(0)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 490)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 420)
-        selected_face_vector = None
 
         while cap.isOpened():
+            selected_face_vector = None
             ret, frame = cap.read()
             if not ret:
                 continue
-            
 
             results = self.face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             if results.multi_face_landmarks:
@@ -168,6 +170,13 @@ class CustomerService:
 
                     # if 주문자가 맞습니까? yes -> getfeature 동작 -> DB 저장 ==============================
                     if (x_max - x_min) > 250 and (y_max - y_min) > 250:
+                        cnt = 0
+                        for landmark in landmarks:
+                            if landmark.x < 0 or landmark.x > 1 or landmark.y < 0 or landmark.y > 1 or landmark.z < 0 or landmark.z > 1:
+                                cnt += 1
+                        if cnt > 270:
+                            print("주문자의 얼굴을 자세히 보여주세요#####")
+                            continue
                         try:
                             selected_face_vector = self.get_feature(face_patch)
                         except ValueError as E:
@@ -175,23 +184,23 @@ class CustomerService:
                             print("얼굴을 감지할 수 없습니다====")
                             continue
                     else:
-                        print("주문자는 더 가까이 와주세요====")
+                        print("주문자의 얼굴을 자세히 보여주세요====")
 
-                    try:
-                        search_customer = self.search_customer(selected_face_vector)
-                        similarity = search_customer.get('similarity')
-                        if similarity > 0.8:
-                            print(f"재방문 해주셔서 감사합니다. {search_customer['name']} 고객님!")
-                            return 0
-                        elif similarity > 0.6:
-                            print("얼굴을 다시 보여주세요")
-                            continue
-                        else:
-                            print("처음 방문해주셔서 감사합니다")
-                            print("SDFsdfadsf")
-                            return self.insert_customer(selected_face_vector, "NewUser", "0000")
-                    except:
-                        pass
+                    if selected_face_vector is not None:
+                        try:
+                            search_customer = self.search_customer(selected_face_vector)
+                            similarity = search_customer.get('similarity')
+                            if similarity > 0.8:
+                                print(f"재방문 해주셔서 감사합니다. {search_customer['name']} 고객님!")
+                                return 0
+                            elif similarity > 0.6:
+                                print("주문자의 얼굴을 자세히 보여주세요")
+                                continue
+                            else:
+                                print("처음 방문해주셔서 감사합니다")
+                                return self.insert_customer(selected_face_vector, "NewUser", "0000")
+                        except:
+                            pass
                     # =================================================================================
 
             success, buffer = cv2.imencode('.jpg', frame)
