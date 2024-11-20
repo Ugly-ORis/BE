@@ -45,7 +45,7 @@ async def create_customer(
     return {"customer_id": customer_id, "message": "Customer created successfully."}
 
 @router.get("/video", response_model=None)
-def video_stream(
+async def video_stream(
     service: CustomerService = Depends(get_customer_service)
 ):
     return StreamingResponse(service.track_and_get_feature(), 
@@ -53,18 +53,18 @@ def video_stream(
 
 @router.post("/search", response_model=dict, summary="특징 벡터로 고객 검색")
 async def search_customer(
-    feature_vector: list[float],
+    image_vector: list[float],
     threshold: float = 0.7,
     service: CustomerService = Depends(get_customer_service)
 ) -> dict:
     """
     Milvus 데이터베이스에서 특정 특징 벡터와 유사한 고객을 검색
 
-    - **feature_vector**: 검색할 특징 벡터
+    - **image_vector**: 검색할 특징 벡터
     - **threshold**: 유사도 임계값 (0~1 사이)
     - **response**: 유사 고객이 있는 경우 해당 이름, 없으면 메시지
     """
-    vector = np.array(feature_vector, dtype=np.float32)
+    vector = np.array(image_vector, dtype=np.float32)
     result = service.search_customer(vector, threshold=threshold)
     if result:
         return {"message": f"Welcome back, {result['name']}!"}
@@ -84,22 +84,21 @@ async def update_customer(
     - **response**: 성공 메시지
     """
     service.update_customer(customer_id, customer)
-    # service.update_customer(customer_id, name, phone_num)
     return {"message": "Customer information updated successfully."}
 
 @router.put("/{customer_id}/update-feature", response_model=dict, summary="특징 벡터 업데이트")
-async def update_feature_vector(
+async def update_image_vector(
     customer_id: int,
-    feature_vector: list[float],
+    image_vector: list[float],
     service: CustomerService = Depends(get_customer_service)
 ) -> dict:
     """
     특정 고객의 특징 벡터를 업데이트
 
     - **customer_id**: 업데이트할 고객 ID
-    - **feature_vector**: 새로운 특징 벡터
+    - **image_vector**: 새로운 특징 벡터d
     - **response**: 성공 메시지
     """
-    vector = np.array(feature_vector, dtype=np.float32)
-    service.update_feature_vector(customer_id, vector)
+    vector = np.array(image_vector, dtype=np.float32)
+    service.update_image_vector(customer_id, vector)
     return {"message": "Feature vector updated successfully."}
