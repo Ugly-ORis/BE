@@ -105,8 +105,8 @@ class CustomerService:
         """
         얼굴 이미지로부터 특징 벡터 추출
         """
-        if frame.dtype != 'uint8':
-            frame = np.clip(frame, 0, 255).astype('uint8')
+        # if frame.dtype != 'uint8':
+        #     frame = np.clip(frame, 0, 255).astype('uint8')
 
         transform = transforms.Compose([
             transforms.ToPILImage(),
@@ -123,13 +123,7 @@ class CustomerService:
         similarity = abs(float(F.cosine_similarity(torch.tensor(origin_feature), torch.tensor(new_feature), dim=-1).mean()))
         similarity_percentage = similarity * 100
         print(f"유사도: {similarity_percentage:.2f}%")
-
-        if similarity >= 0.8:
-            return "같은 사람입니다."
-        elif similarity >= 0.6:
-            return "얼굴을 좀 더 정확히 보여주세요."
-        else:
-            return "다른 사람으로 판단됩니다."
+        return similarity
 
     def track_and_get_feature(self):  # -> np.ndarray
         """
@@ -144,6 +138,7 @@ class CustomerService:
             ret, frame = cap.read()
             if not ret:
                 continue
+            
 
             results = self.face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             if results.multi_face_landmarks:
@@ -157,8 +152,8 @@ class CustomerService:
                         continue
                             
                     # 감정 예측
-                    face_patch = self.preprocess_face_patch(face_patch)
-                    emotion_prediction = self.emotion_model.predict(face_patch)[0]
+                    face_patch_ = self.preprocess_face_patch(face_patch)
+                    emotion_prediction = self.emotion_model.predict(face_patch_)[0]
 
                     # 감정별 가중치 적용 및 확률 재조정
                     emotion_prediction = (emotion_prediction * self.emotion_weights) / np.sum(emotion_prediction * self.emotion_weights)
@@ -181,6 +176,22 @@ class CustomerService:
                             continue
                     else:
                         print("주문자는 더 가까이 와주세요====")
+
+                    try:
+                        search_customer = self.search_customer(selected_face_vector)
+                        similarity = search_customer.get('similarity')
+                        if similarity > 0.8:
+                            print(f"재방문 해주셔서 감사합니다. {search_customer['name']} 고객님!")
+                            return 0
+                        elif similarity > 0.6:
+                            print("얼굴을 다시 보여주세요")
+                            continue
+                        else:
+                            print("처음 방문해주셔서 감사합니다")
+                            print("SDFsdfadsf")
+                            return self.insert_customer(selected_face_vector, "NewUser", "0000")
+                    except:
+                        pass
                     # =================================================================================
 
             success, buffer = cv2.imencode('.jpg', frame)
@@ -192,13 +203,15 @@ class CustomerService:
                 b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n'
                 )
         cap.release()
-        return selected_face_vector
 
-    def search_customer(self, image_vector, threshold: float = 0.7) -> dict:
+    def search_customer(self, 
+                        image_vector,
+                        threshold: float = 0.7
+                        ) -> dict:
         """
         Milvus DB에서 특정 특징 벡터와 유사한 고객을 검색하고, 유사도에 따라 메시지 반환
         """
-        search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
+        search_params = {"metric_type": "L2", "params": {"nprobe": 128}}
         results = self.client.collection.search(
             data=[image_vector.flatten().astype(np.float32).tolist()],
             anns_field="image_vector",
@@ -209,8 +222,9 @@ class CustomerService:
         if results and results[0]:
             matched_customer = results[0][0]
             match_vector = np.array(matched_customer.entity.get("image_vector"), dtype=np.float32)
-            similarity_message = self.get_similarity(image_vector, match_vector)
-            return {"name": matched_customer.entity.get("name"), "message": similarity_message}
+            similarity = self.get_similarity(image_vector, match_vector)
+            
+            return {"name": matched_customer.entity.get("name"), "similarity": similarity, "message": f"{similarity * 100}% 유사도"}
 
         return {"message": "No matching customer found."}
 
@@ -229,6 +243,7 @@ class CustomerService:
         
         try:
             insert_result = self.client.collection.insert(entities)
+            self.id_manager.update_last_id("Customer", customer_id)
             self.client.collection.flush()
             return insert_result.primary_keys[0]
         except Exception as e:
@@ -260,6 +275,6 @@ class CustomerService:
         customer_info = self.get_customer(customer_id)
         image_vector = customer_info.get("image_vector") 
         image_vector = np.array(image_vector, dtype=np.float32).reshape(1, 512)
-        self.delete_customer(customer_id)
         self.insert_customer(image_vector, name, phone_last_digits)
+        self.delete_customer(customer_id)
     
