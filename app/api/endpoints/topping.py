@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Query, HTTPException, Depends, File, UploadFile
-from app.schemas.topping_schema import ToppingCreate, ToppingResponse
+from app.schemas.topping_schema import ToppingCreate, ToppingResponse, ToppingResponseWithImg
 from app.services.topping_service import ToppingService
 from app.api.dependencies import topping_client
 from typing import List
+from PIL import Image
+from io import BytesIO
 
 def get_topping_service() -> ToppingService:
     return ToppingService(topping_client)
 
 router = APIRouter()
 
-@router.get("/", response_model=List[ToppingResponse])
+@router.get("/", response_model=List[ToppingResponseWithImg])
 async def get_toppings(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
@@ -27,9 +29,17 @@ async def get_toppings(
     return toppings
 
 @router.post("/", response_model=ToppingResponse)
-async def create_topping(topping: ToppingCreate, image: UploadFile = File(...), service: ToppingService = Depends(get_topping_service)):
-    topping_id = service.create_topping(topping)
-    return ToppingResponse(topping_id=topping_id, **topping.dict())
+async def create_topping(topping: ToppingCreate = Depends(ToppingCreate.as_form),
+    image: UploadFile = File(...), service: ToppingService = Depends(get_topping_service)):
+    image_bytes = await image.read()
+    pil_image = Image.open(BytesIO(image_bytes))
+    topping_id = service.create_topping(topping, pil_image)
+    return {
+        "topping_id": topping_id,
+        "name": topping.name,
+        "extra_price": topping.extra_price
+
+    }
 
 @router.get("/{topping_id}", response_model=ToppingResponse)
 async def get_topping(topping_id: int, service: ToppingService = Depends(get_topping_service)):

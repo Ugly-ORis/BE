@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Type, List
+from typing import Type
 from fastapi import Form
 import inspect
 
@@ -18,7 +18,7 @@ def as_form(cls: Type[BaseModel]):
         return cls(**data)
     sig = inspect.signature(as_form_func)
     sig = sig.replace(parameters=new_params)
-    as_form_func.__signature__ = sig  # type: ignore
+    as_form_func.__signature__ = sig
     setattr(cls, "as_form", as_form_func)
     return cls
 

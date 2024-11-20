@@ -1,35 +1,51 @@
 from app.db.milvus_client import MilvusClient
-from app.schemas.cart_schema import CartCreate, CartUpdate, CartResponse
-from typing import Optional, List, Dict
+from typing import Optional
+
+from app.schemas.cart_schema import CartCreate
+from app.utils.id_manager import IDManager
 
 class CartService:
     def __init__(self, client: MilvusClient):
         self.client = client
+        self.id_manager = IDManager()
+        self.id_manager.initialize_default_ids(["Cart"])
 
-    # ... (다른 메서드 생략)
+    def get_carts(self, offset: int, limit: int):
+        results = self.client.collection.query(
+            expr="", 
+            output_fields=["cart_id", "customer_id", "sale_product_id_json"], 
+            offset=offset, 
+            limit=limit
+        )
+        carts = [
+            {
+                "cart_id": result["cart_id"],
+                "customer_id": result["customer_id"],
+                "sale_product_id_json": result["sale_product_id_json"],
+            }
+            for result in results
+        ]
+        return carts
 
-    async def get_cart_by_id(self, cart_id: int) -> Optional[CartResponse]:
-        """특정 카트 ID에 대한 CartResponse를 반환합니다."""
-        product = await self.get_product(cart_id)  
-        if product:
-            return CartResponse(
-                cart_id=product['cart_id'],
-                ice_cream_id=product['ice_cream_id'],
-                customer_id=product['customer_id'],
-                topping_id=product['topping_id'],
-                product_price=product['product_price']
-            )
-        return None  # 제품을 찾지 못한 경우 None 반환
-
-    async def get_product(self, product_id: int) -> Optional[dict]:
-        # cart_id로 쿼리 수정
-        result = self.client.collection.query(f"cart_id == {product_id}", output_fields=["cart_id", "ice_cream_id", "customer_id", "topping_id", "product_price"])
-        
-        # 결과가 비어 있지 않으면 첫 번째 요소를 반환
-        return result[0] if result else None
+    def create_cart(self, cart: CartCreate) -> int:
+        cart_id = self.id_manager.get_next_id("Cart")
+        entities = [
+            [cart_id],
+            [cart.customer_id],
+            [[0.0, 0.0]],
+            [cart.sale_product_id_json],
+        ]
+        self.client.collection.insert(entities)
+        self.client.collection.flush()
+        self.id_manager.update_last_id("Cart", cart_id)
+        return cart_id
     
+    def get_cart(self, cart_id: int) -> Optional[dict]:
+        result = self.client.collection.query(
+            expr=f"cart_id == {cart_id}", 
+            output_fields=["cart_id", "customer_id", "sale_product_id_json"]
+        )
+        return result[0] if result else None
 
-    async def delete_carts(self, cart_ids: List[int]) -> None:
-        for cart_id in cart_ids:
-            # cart_id에 해당하는 항목 삭제
-            self.client.collection.delete({"cart_id": cart_id})
+    def delete_cart(self, cart_id: int) -> bool:
+        return self.client.collection.delete(f"cart_id == {cart_id}")
