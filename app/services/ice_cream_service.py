@@ -57,7 +57,6 @@ class IceCreamService:
         )
         return result[0] if result else None
 
-
     def delete_ice_cream(self, ice_cream_id: int) -> bool:
         return self.client.collection.delete(f"id == {ice_cream_id}")
     

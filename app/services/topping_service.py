@@ -48,7 +48,10 @@ class ToppingService:
         return topping_id
 
     def get_topping(self, topping_id: int) -> Optional[dict]:
-        result = self.client.collection.query(f"topping_id == {topping_id}")
+        result = self.client.collection.query(
+            expr=f"topping_id == {topping_id}", 
+            output_fields=["topping_id", "name", "extra_price"]
+        )
         return result[0] if result else None
 
     def delete_topping(self, topping_id: int) -> bool:

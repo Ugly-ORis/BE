@@ -1,4 +1,4 @@
-from app.schemas.sale_product_schema import SaleProductCreate, SaleProductResponse
+from app.schemas.sale_product_schema import SaleProductCreate, SaleProductResponse, SaleProductListResponse
 from app.services.sale_product import SaleProductService
 from fastapi import APIRouter, Query, HTTPException, Depends
 from app.services.ice_cream_service import IceCreamService
@@ -10,7 +10,7 @@ def get_sale_product_service() -> SaleProductService:
 
 router = APIRouter()
 
-@router.get("/", response_model=List[SaleProductResponse])
+@router.get("/", response_model=List[SaleProductListResponse])
 async def get_sale_products(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),

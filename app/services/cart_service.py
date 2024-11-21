@@ -1,7 +1,8 @@
+from app.api.endpoints.sale_product import get_sale_product_service
 from app.db.milvus_client import MilvusClient
-from typing import Optional
-
-from app.schemas.cart_schema import CartCreate
+from typing import Dict, Optional
+from app.schemas.cart_schema import CartCreate, CartResponse
+from app.services.sale_product import SaleProductService
 from app.utils.id_manager import IDManager
 
 class CartService:
@@ -40,12 +41,29 @@ class CartService:
         self.id_manager.update_last_id("Cart", cart_id)
         return cart_id
     
-    def get_cart(self, cart_id: int) -> Optional[dict]:
-        result = self.client.collection.query(
+    def get_cart(self, cart_id: int) -> Optional[Dict]:
+        if not (result := self.client.collection.query(
             expr=f"cart_id == {cart_id}", 
             output_fields=["cart_id", "customer_id", "sale_product_id_json"]
+        )):
+            return None
+
+        cart = result[0]
+
+        sale_product_service: SaleProductService = get_sale_product_service()
+
+        sale_products = []
+        for sale_product_id in cart["sale_product_id_json"]:
+            sale_product = sale_product_service.get_sale_product(sale_product_id)
+            if sale_product:
+                sale_products.append(sale_product)
+
+        return CartResponse(
+            cart_id=cart["cart_id"],
+            customer_id=cart["customer_id"],
+            sale_product_id_json=cart["sale_product_id_json"],
+            sale_products=sale_products
         )
-        return result[0] if result else None
 
     def delete_cart(self, cart_id: int) -> bool:
         return self.client.collection.delete(f"cart_id == {cart_id}")

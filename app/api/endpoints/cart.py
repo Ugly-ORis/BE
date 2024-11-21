@@ -1,4 +1,4 @@
-from app.schemas.cart_schema import CartCreate, CartResponse
+from app.schemas.cart_schema import CartCreate, CartResponse,CartListResponse
 from fastapi import APIRouter, Query, HTTPException, Depends
 from app.services.cart_service import CartService
 from app.api.dependencies import cart_client
@@ -11,8 +11,7 @@ def get_cart_service() -> CartService:
 
 router = APIRouter()
 
-@router.get("/", response_model=List[CartResponse])
-
+@router.get("/", response_model=List[CartListResponse])
 async def get_carts(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
