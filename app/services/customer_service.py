@@ -287,3 +287,5 @@ class CustomerService:
         self.insert_customer(image_vector, name, phone_last_digits)
         self.delete_customer(customer_id)
     
+    def wo():
+        pass
