@@ -48,3 +48,6 @@ nohup.out
 # 기타
 *.bak
 yolo11x.pt
+
+# xArm_Python_SDK
+xArm_Python_SDK/

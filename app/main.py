@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from app.api.endpoints import customer, order, ice_cream, topping, sale_product, robot_topcam_view
+from app.api.endpoints import customer, order, ice_cream, topping, sale_product, robot_topcam_view, aris_robot
 
 app = FastAPI()
 
@@ -24,3 +24,4 @@ app.include_router(topping, prefix="/topping", tags=["topping"])
 app.include_router(order, prefix="/order", tags=["order"])
 app.include_router(sale_product, prefix="/sale_product", tags=["sale_product"])
 app.include_router(robot_topcam_view, prefix="/robot_topcam_view", tags=["robot_topcam_view"])
+app.include_router(aris_robot, prefix="/aris_robot", tags=["robot_action"])

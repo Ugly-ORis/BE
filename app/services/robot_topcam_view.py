@@ -10,51 +10,48 @@ from BE.xArm_Python_SDK.robot_action import RobotMain
 from xarm.wrapper import XArmAPI
 from xarm import version
 import asyncio
+import cv2
+import numpy as np
+from ultralytics import YOLO
+from scipy.spatial import distance
+import time
+from gtts import gTTS  # gTTS 라이브러리 추가
+import os
+import threading
 
-RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
-arm = XArmAPI('192.168.1.184', baud_checkset=False)
-robot = RobotMain(arm)
+    
+# import asyncio
+# from gtts import gTTS
+# import os
+# import cv2
+# import numpy as np
+# from scipy.spatial import distance
+
 
 class topcamService():
     
-    def __init__(self, client: MilvusClient):
-        self.client = client
+    async def get_topcam_id():
         
-    async def get_marker_id(self, websocket: WebSocket):
-        await websocket.accept()
-        """
-        아리스 상단 캠을 열어 아루코마커를 읽어 캡슐을 인식하기 위함
-        """
-        
-        # ArUco 사전 (marker dictionary)와 marker size (예: 6x6 크기의 마커)
+        # ArUco 마커 사전 및 파라미터 초기화
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
         parameters = cv2.aruco.DetectorParameters()
-        # 웹캠 열기
-        cap = cv2.VideoCapture(2)
-
-        # 특정 마커 ID 설정 (이 ID의 마커가 사라졌을 때 트리거)
-        target_marker_ids = {0,5,7}  # 사라짐을 감지할 마커 ID 집합
-        marker_lost_times = {marker_id: None for marker_id in target_marker_ids}  # 각 마커의 사라짐 시간
-        timeout_duration = 3  # 사라짐 확인 시간 (초)
+        cap = cv2.VideoCapture(0)
+        # 감지할 마커 ID와 타이머 초기화
+        target_marker_ids = {0, 5, 7}
+        marker_lost_times = {marker_id: None for marker_id in target_marker_ids}
+        timeout_duration = 3  # 감지 안 된 상태를 확인할 시간 (초)
         while cap.isOpened():
-            ret, frame = cap.read()
+            ret, frame = await asyncio.to_thread(cap.read)
             if not ret:
                 break
-
             # Grayscale 변환
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
+            gray = await asyncio.to_thread(cv2.cvtColor, frame, cv2.COLOR_BGR2GRAY)
             # ArUco 마커 감지
-            corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-
-            # 현재 감지된 마커 ID 목록을 집합으로 만듦
+            def detect_markers():
+                return cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+            corners, ids, _ = await asyncio.to_thread(detect_markers)
             detected_ids = set(ids.flatten()) if ids is not None else set()
-
-            # 감지된 마커 그리기
-            if ids is not None:
-                cv2.aruco.drawDetectedMarkers(frame, corners, ids)
-
-            # 각 target 마커 ID에 대해 체크
+            # 감지되지 않은 마커 처리
             for marker_id in target_marker_ids:
                 if marker_id in detected_ids:
                     # 마커가 감지되면 타이머 초기화
@@ -63,155 +60,338 @@ class topcamService():
                     # 마커가 감지되지 않으면 타이머 시작
                     if marker_lost_times[marker_id] is None:
                         marker_lost_times[marker_id] = time.time()  # 사라진 시간 기록
-                    elif time.time() - marker_lost_times[marker_id] > timeout_duration and time.time() - marker_lost_times[marker_id] < 5:
-                        # 마커가 사라진 후 timeout_duration 경과 시 perform_action 실행
-                        marker_lost_times[marker_id] = 6  # 타이머 초기화 (한 번만 실행)
-                        
-                        # self.robot_action(self, marker_id)
-                        if marker_id == 5:
-                            await asyncio.to_thread(self.robot_action, marker_id)
-
-            # 화면 출력
-            cv2.imshow("ArUco Marker Detection", frame)
-
+                    elif time.time() - marker_lost_times[marker_id] > timeout_duration:
+                        # 타임아웃 경과 시 ID 출력
+                        print(f"Marker ID {marker_id} not detected!")
+                        # 실행 완료 후 타이머 초기화
+                        marker_lost_times[marker_id] = None
+            
             # 'q' 키를 누르면 종료
+            cv2.imshow("ArUco Marker Detection", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                await websocket.close()
                 break
-        
-        # 정리
+            
+        # 자원 정리
         cap.release()
         cv2.destroyAllWindows()
         
-    def robot_action(self, marker_id):
-        if marker_id == 5:
-            print("지그 3 캡슐 인식")
-            robot.motion_home()
-            
-            
-    # asyncio.run(get_marker_id())
-
-
-
-################################
-# RobotMain.pprint('xArm-Python-SDK Version:{}'.format(version.__version__))
-# arm = XArmAPI('192.168.1.184', baud_checkset=False)
-# robot = RobotMain(arm)
-
-# class topcamService:
-
-#     def __init__(self, client: MilvusClient):
-#         self.client = client
         
-#     async def get_marker_id(self, websocket: WebSocket):
-#         await websocket.accept()
-#         """
-#         아리스 상단 캠을 열어 아루코마커를 읽어 캡슐을 인식하기 위함
-#         """
-        
-#         # ArUco 사전 (marker dictionary)와 marker size (예: 6x6 크기의 마커)
-#         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100)
-#         parameters = cv2.aruco.DetectorParameters()
-#         # 웹캠 열기
-#         cap = cv2.VideoCapture(2)
+    
 
-#         # 특정 마커 ID 설정 (이 ID의 마커가 사라졌을 때 트리거)
-#         target_marker_ids = {0,5,7}  # 사라짐을 감지할 마커 ID 집합
-#         marker_lost_times = {marker_id: None for marker_id in target_marker_ids}  # 각 마커의 사라짐 시간
-#         timeout_duration = 3  # 사라짐 확인 시간 (초)
-#         while cap.isOpened():
-#             ret, frame = cap.read()
+# ## 백업, TTS 와 객체 인식 동시에 아직 안되는 상태 ( 실행 됨 ) #### 
+    
+# class topcamService():
+    
+#     def __init__(self, topcam_client=None):
+#         """
+#         yolo 모델 로드
+#         """
+#         # YOLOv8 모델 로드
+#         self.model = YOLO('/home/hanse/xyz/FastAPI/BE/app/services/best.pt')  # 전체 객체 탐지 모델
+
+#         # 웹캠 초기화
+#         self.cap = cv2.VideoCapture(2)
+
+#         # ROI 영역 정의 (지그 1, 2, 3의 좌표)
+#         self.jig_positions = {
+#             1: ((250, 35+20), (380, 140+20)),   # 지그 1: (좌상단, 우하단)
+#             2: ((400, 30+20), (510, 132+20)),  # 지그 2
+#             3: ((530, 30+20), (630, 135+20))   # 지그 3
+#         }
+
+#         # 프레임 처리 타이머 설정
+#         self.frame_interval = 0.0  # 0.x초 간격으로 추론 (초당 약 x 프레임)
+#         self.last_time = time.time()
+
+#         # 메시지 상태 플래그
+#         self.last_state = {"siling_detected": False, "distance_state": None}
+        
+#         self.topcam_client = topcam_client        
+#         pass
+
+#     # 음성 출력 함수
+#     def speak_once(self, message, key):
+#         """
+#         gTTS를 사용하여 음성을 출력합니다.
+#         """
+#         # while self.last_state.get(key) != message:
+#         if self.last_state.get(key) != message:
+#             try:
+#                 tts = gTTS(text=message, lang='ko')
+#                 tts.save("./app/services/tts_text.mp3")
+#                 os.system("mplayer ./app/services/tts_text.mp3")
+#                 os.system("rm ./app/services/tts_text.mp3")
+#                 self.last_state[key] = message
+#             except Exception as e:
+#                 print(f"음성 출력 오류: {e}")
+
+#     # ROI 내 위치 확인 함수
+#     def check_jig_position(self, mask_points):
+#         """
+#         마스크의 모든 좌표가 어느 지그에 완전히 들어있는지 확인
+#         """
+#         for jig_id, ((x1, y1), (x2, y2)) in self.jig_positions.items():
+#             if all(x1 <= point[0] <= x2 and y1 <= point[1] <= y2 for point in mask_points):
+#                 return jig_id
+#         return None
+
+#     async def yolo_run(self, websocket: WebSocket):
+#         """
+#         yolo 모델에서 person, robot_arm, siling, ice_cream을 추출, 및 거리계산 등 활용
+#         """
+#         while self.cap.isOpened():
+#             ret, frame = self.cap.read()
 #             if not ret:
 #                 break
 
-#             # Grayscale 변환
-#             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#             # 현재 시간이 마지막 추론 시간 + 프레임 간격보다 크면 추론 실행
+#             if time.time() - self.last_time >= self.frame_interval:
+#                 self.last_time = time.time()
 
-#             # ArUco 마커 감지
-#             corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+#                 # YOLOv8 세그멘테이션 수행
+#                 results = self.model.predict(source=frame, show=False)
 
-#             # 현재 감지된 마커 ID 목록을 집합으로 만듦
-#             detected_ids = set(ids.flatten()) if ids is not None else set()
+#                 if results and results[0].masks:
+#                     detected_objects = {"person": [], "robot_arm": [], "siling": [], "ice_cream": []}
+#                     for i, mask in enumerate(results[0].masks.xy):
+#                         cls = int(results[0].boxes.cls[i])
+#                         conf = results[0].boxes.conf[i]
+#                         label = self.model.names[cls]
 
-#             # 감지된 마커 그리기
-#             if ids is not None:
-#                 cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+#                         if conf < 0.4:
+#                             continue  # 신뢰도 낮은 객체 무시
 
-#             # 각 target 마커 ID에 대해 체크
-#             for marker_id in target_marker_ids:
-#                 if marker_id in detected_ids:
-#                     # 마커가 감지되면 타이머 초기화
-#                     marker_lost_times[marker_id] = None
-#                 else:
-#                     # 마커가 감지되지 않으면 타이머 시작
-#                     if marker_lost_times[marker_id] is None:
-#                         marker_lost_times[marker_id] = time.time()  # 사라진 시간 기록
-#                     elif time.time() - marker_lost_times[marker_id] > timeout_duration and time.time() - marker_lost_times[marker_id] < 5:
-#                         # 마커가 사라진 후 timeout_duration 경과 시 perform_action 실행
-#                         marker_lost_times[marker_id] = 6  # 타이머 초기화 (한 번만 실행)
-#                         # print(" 아이스크림 캡슐 인식1 : ", marker_id, (type(marker_id)))
-#                         await self.robot_action(marker_id)
+#                         # 필요한 객체만 필터링
+#                         if label in detected_objects:
+#                             mask_points = np.array(mask, dtype=np.int32)
+#                             detected_objects[label].append(mask_points)
 
-#                         # await asyncio.to_thread(self.robot_action, marker_id)
+#                             # 화면 표시 (폴리곤 및 텍스트)
+#                             color = {
+#                                 "person": (0, 255, 0),      # 녹색
+#                                 "robot_arm": (255, 0, 0),   # 파란색
+#                                 "siling": (0, 0, 255),      # 빨간색
+#                                 "ice_cream": (255, 255, 0)  # 노란색
+#                             }.get(label, (255, 255, 255))
+#                             x_center = int(np.mean(mask_points[:, 0]))  # x 중심 좌표
+#                             y_center = int(np.mean(mask_points[:, 1]))  # y 중심 좌표
+#                             cv2.polylines(frame, [mask_points], isClosed=True, color=color, thickness=2)
+#                             cv2.putText(frame, label, (x_center, y_center - 10),
+#                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-#             # 화면 출력
-#             cv2.imshow("ArUco Marker Detection", frame)
+#                             # "ice_cream"의 지그 위치 확인
+#                             if label == "ice_cream":
+#                                 jig_id = self.check_jig_position(mask_points)
+#                                 if jig_id:
+#                                     print(f"Ice Cream completely detected at Jig {jig_id}")
+#                                     cv2.putText(frame, f"Jig {jig_id}", (x_center, y_center + 20),
+#                                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-#             # 'q' 키를 누르면 종료
+#                     # "실링" 검출 여부 확인
+#                     if detected_objects["siling"]:
+#                         print("실링 검출: 실링을 제거해주세요!")  # 디버그 출력
+#                         self.speak_once("실링을 제거해주세요!", "siling_detected")
+#                     else:
+#                         self.last_state["siling_detected"] = False  # 상태 초기화
+
+#                     # 거리 계산 (사람과 로봇 팔 간 최소 거리)
+#                     person_masks = detected_objects["person"]
+#                     robot_arm_masks = detected_objects["robot_arm"]
+
+#                     if person_masks and robot_arm_masks:
+#                         min_distance = float('inf')
+#                         for person_mask in person_masks:
+#                             for robot_mask in robot_arm_masks:
+#                                 dist = distance.cdist(person_mask, robot_mask).min()
+#                                 min_distance = min(min_distance, dist)
+
+#                         print(f"Closest distance between 'person' and 'robot_arm': {min_distance:.2f} pixels")
+
+#                         # 거리 상태 출력
+#                         if min_distance <= 15:
+#                             self.speak_once("정지.", "distance_state")
+#                         elif min_distance <= 70:
+#                             self.speak_once("위험.", "distance_state")
+#                         else:
+#                             self.last_state["distance_state"] = None  # 안전 상태
+#                     else:
+#                         self.last_state["distance_state"] = None  # 거리 계산 없음
+
+#                 # 지그 영역 표시
+#                 for jig_id, ((x1, y1), (x2, y2)) in self.jig_positions.items():
+#                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 2)
+#                     cv2.putText(frame, f"Jig {jig_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+
+#             # 화면에 표시
+#             cv2.imshow('YOLOv8 Segmentation', frame)
+
 #             if cv2.waitKey(1) & 0xFF == ord('q'):
-#                 await websocket.close()
 #                 break
         
-#         # 정리
-#         cap.release()
+#         await websocket.send_text("YOLO detection running...")
+
+#         # 자원 해제
+#         self.cap.release()
 #         cv2.destroyAllWindows()
-        
-#     async def robot_action(self, id):
-#         print("hello")
-        
-        # if id == 5:
-        #     print("지그 3 캡슐 인식")
-        #     # await asyncio.to_thread(robot.motion_home())
-        #     robot.motion_home()
 
-            # await robot.jig3_grab()
-            # await robot.motion_home()
-            # await robot.motion_check_sealing()
-            # await robot.motion_place_capsule()
-            # await robot.motion_grab_cup()
-            # await robot.motion_make_icecream()
-            # await robot.topping_2()
-            # await robot.serve_jig3()
+#     def yolo_thread(self, websocket: WebSocket):
+#         """
+#         asyncio 루프 내에서 yolo_run을 실행
+#         """
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
+#         loop.run_until_complete(self.yolo_run(websocket))
+
+#     def thread_run(self, websocket: WebSocket):
+#         """
+#         yolo와 tts를 함께 하기 위한 쓰레드
+#         """
+#         yolo_thread = threading.Thread(target=self.yolo_thread, args=(websocket,))
+#         yolo_thread.start()
+
+#         # tts_thread = threading.Thread(target=topcamService.speak_once)
+#         # tts_thread.start()
         
-        # if marker_id == 7:
-        #     print("지그 2 캡슐 인식")
-        #     # robot.motion_home()
-            
-        # if marker_id == 0:
-        #     print("지그 1 캡슐 인식")
-        #     # robot.motion_home()
-            
+
+
+
+# """
+# 코드 수정중, TTS와 병렬로 캠 쓰는중 ( 버리는 코드 )
+# """
+
+
+# class DetectionService:
+#     def __init__(self, topcam_client=None):
+#         """
+#         yolo 모델 로드
+#         """
+#         # YOLOv8 모델 로드
+#         self.model = YOLO('/home/hanse/xyz/FastAPI/BE/app/services/best.pt')  # 전체 객체 탐지 모델
+
+#         # 웹캠 초기화
+#         self.cap = cv2.VideoCapture(2)
+
+#         # ROI 영역 정의 (지그 1, 2, 3의 좌표)
+#         self.jig_positions = {
+#             1: ((250, 35+20), (380, 140+20)),   # 지그 1: (좌상단, 우하단)
+#             2: ((400, 30+20), (510, 132+20)),  # 지그 2
+#             3: ((530, 30+20), (630, 135+20))   # 지그 3
+#         }
+
+#         # 프레임 처리 타이머 설정
+#         self.frame_interval = 0.0  # 0.x초 간격으로 추론 (초당 약 x 프레임)
+#         self.last_time = time.time()
+
+#         # 메시지 상태 플래그
+#         self.last_state = {"siling_detected": False, "distance_state": None}
+        
+#         self.topcam_client = topcam_client        
+#         pass
+
+#         self.message_queue = asyncio.Queue()  # 메시지 큐 생성
+
+#     # ROI 내 위치 확인 함수
+#     def check_jig_position(self, mask_points):
+#         """
+#         마스크의 모든 좌표가 어느 지그에 완전히 들어있는지 확인
+#         """
+#         for jig_id, ((x1, y1), (x2, y2)) in self.jig_positions.items():
+#             if all(x1 <= point[0] <= x2 and y1 <= point[1] <= y2 for point in mask_points):
+#                 return jig_id
+#         return None
+
+#     async def speak_worker(self):
+#         """TTS 메시지 큐를 처리하는 작업"""
+#         while True:
+#             message, key = await self.message_queue.get()  # 큐에서 메시지 꺼내기
+#             if self.last_state.get(key) != message:
+#                 try:
+#                     tts = gTTS(text=message, lang='ko')
+#                     tts.save("./app/services/tts_text.mp3")
+#                     os.system("mplayer ./app/services/tts_text.mp3")
+#                     os.system("rm ./app/services/tts_text.mp3")
+#                     self.last_state[key] = message
+#                 except Exception as e:
+#                     print(f"음성 출력 오류: {e}")
+#             self.message_queue.task_done()  # 작업 완료 처리
+
+#     async def yolo_run(self, websocket):
+#         """YOLO 모델 실행 및 TTS 메시지 큐에 작업 추가"""
+#         asyncio.create_task(self.speak_worker())  # TTS 워커 실행
+
+#         while self.cap.isOpened():
+#             ret, frame = self.cap.read()
+#             if not ret:
+#                 break
+
+#             if time.time() - self.last_time >= self.frame_interval:
+#                 self.last_time = time.time()
+#                 results = self.model.predict(source=frame, show=False)
+
+#                 if results and results[0].masks:
+#                     detected_objects = {"person": [], "robot_arm": [], "siling": [], "ice_cream": []}
+#                     for i, mask in enumerate(results[0].masks.xy):
+#                         cls = int(results[0].boxes.cls[i])
+#                         conf = results[0].boxes.conf[i]
+#                         label = self.model.names[cls]
+
+#                         if conf < 0.4:
+#                             continue
+
+#                         if label in detected_objects:
+#                             mask_points = np.array(mask, dtype=np.int32)
+#                             detected_objects[label].append(mask_points)
+
+#                     if detected_objects["siling"]:
+#                         print("실링 검출: 실링을 제거해주세요!")
+#                         await self.message_queue.put(("실링을 제거해주세요!", "siling_detected"))
+#                     else:
+#                         self.last_state["siling_detected"] = False
+
+#                     person_masks = detected_objects["person"]
+#                     robot_arm_masks = detected_objects["robot_arm"]
+
+#                     if person_masks and robot_arm_masks:
+#                         min_distance = float('inf')
+#                         for person_mask in person_masks:
+#                             for robot_mask in robot_arm_masks:
+#                                 dist = distance.cdist(person_mask, robot_mask).min()
+#                                 min_distance = min(min_distance, dist)
+
+#                         print(f"Closest distance: {min_distance:.2f} pixels")
+#                         if min_distance <= 15:
+#                             await self.message_queue.put(("정지.", "distance_state"))
+#                         elif min_distance <= 70:
+#                             await self.message_queue.put(("위험.", "distance_state"))
+#                         else:
+#                             self.last_state["distance_state"] = None
+
+#             cv2.imshow('YOLOv8 Segmentation', frame)
+
+#             if cv2.waitKey(1) & 0xFF == ord('q'):
+#                 break
+
+#         await websocket.send_text("YOLO detection running...")
+#         self.cap.release()
+#         cv2.destroyAllWindows()
     
     
+#     def yolo_thread(self, websocket: WebSocket):
+#         """
+#         asyncio 루프 내에서 yolo_run을 실행
+#         """
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
+#         loop.run_until_complete(self.yolo_run(websocket))
 
-    # def create_ice_cream(self, ice_cream_data: IceCreamCreate) -> int:
-    #     entities = [
-    #         [ice_cream_data.name],
-    #         [ice_cream_data.flavor],
-    #         [ice_cream_data.price],
-    #         [ice_cream_data.stock]
-    #     ]
-    #     insert_result = self.client.collection.insert(entities)
-    #     self.client.collection.flush()
-    #     return insert_result.primary_keys[0]
+#     def thread_run(self, websocket: WebSocket):
+#         """
+#         yolo와 tts를 함께 하기 위한 쓰레드
+#         """
+#         yolo_thread = threading.Thread(target=self.yolo_thread, args=(websocket,))
+#         yolo_thread.start()
 
-    # def get_ice_cream(self, ice_cream_id: int) -> Optional[dict]:
-    #     result = self.client.collection.query(f"id == {ice_cream_id}")
-    #     return result[0] if result else None
+#         # tts_thread = threading.Thread(target=topcamService.speak_once)
+#         # tts_thread.start()
 
-    # def update_ice_cream(self, ice_cream_id: int, ice_cream_data: IceCreamUpdate) -> bool:
-    #     update_fields = {k: v for k, v in ice_cream_data.dict().items() if v is not None}
-    #     return self.client.collection.update(ice_cream_id, update_fields)
 
-    # def delete_ice_cream(self, ice_cream_id: int) -> bool:
-    #     return self.client.collection.delete(f"id == {ice_cream_id}")
